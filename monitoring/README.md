@@ -26,6 +26,8 @@ First, check that Prometheus is **successfully scraping all services**.
 
 ➡️ Status should be **UP**. If any are **DOWN**, check the troubleshooting section below.
 
+![prometheus_targets](./images/prometheus_targets.png)
+
 ## ✅ Step 2: Configure Grafana Data Source
 
 1. **Access Grafana**: [http://localhost:3000](http://localhost:3000)
@@ -45,13 +47,23 @@ First, check that Prometheus is **successfully scraping all services**.
 3. Name: "Docker Container & Host Metrics"
 4. Select Prometheus data source
 5. Click **Import**
+![cadivsor_dash](./images/cadivsor_dash.png)
 
 ### 🖥️ System Metrics Dashboard (Node Exporter)
 1. Dashboard ID: **1860**
 2. Name: "Node Exporter Full"
 3. Shows CPU, Memory, Disk, Network metrics
+![nodeexporter_dash](./images/nodeexporter_dash.png)
 
 ### 🔧 Application Health Dashboard (Blackbox Exporter)
 1. Dashboard ID: **7587**
 2. Name: "Blackbox Exporter"
 3. Shows uptime, response times, SSL certificate status
+![blackbox_dash](./images/blackbox_dash.png)
+
+---
+
+### All Dashboards
+![all_dashboards](./images/all_dashboards.png)
+
+---
