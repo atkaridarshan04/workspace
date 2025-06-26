@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Flask + MySQL App 🚀</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(to bottom, #0f0f0f, #1c1c1c);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ff9800;
+            text-decoration: none;
+        }
+
+        .container {
+            flex: 1;
+            max-width: 700px;
+            margin: 2rem auto;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            background: linear-gradient(135deg, #ff9800, #e65100);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .messages {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .message {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .message p {
+            margin: 0;
+            flex: 1;
+        }
+
+        .message-actions button {
+            margin-left: 10px;
+            background: none;
+            border: none;
+            color: #ff9800;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .message-actions button:hover {
+            color: #fff;
+        }
+
+        input[type="text"], input[type="submit"] {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        input[type="text"] {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            text-align: center;
+        }
+
+        input[type="text"]:focus {
+            border-color: #ff9800;
+            outline: none;
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+        }
+
+        input[type="submit"] {
+            background: linear-gradient(135deg, #ff9800, #e65100);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            box-shadow: 0 0 10px rgba(255, 152, 0, 0.7);
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="brand">Flask+MySQL 🚀</a>
+    </nav>
+
+    <div class="container">
+        <h1>Message Board</h1>
+
+        <div class="messages" id="messagesBox">
+            {% for msg in messages %}
+                <div class="message" data-id="{{ msg[0] }}">
+                    <p>{{ msg[1] }}</p>
+                    <div class="message-actions">
+                        <button onclick="editMessage({{ msg[0] }}, this)">✏️</button>
+                        <button onclick="deleteMessage({{ msg[0] }})">🗑️</button>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <form id="messageForm">
+            <input type="text" name="new_message" placeholder="Type a message..." required>
+            <input type="submit" value="Send">
+        </form>
+    </div>
+
+    <div id="toast">Message sent ✅</div>
+
+    <script>
+        function showToast(text) {
+            const toast = document.getElementById("toast");
+            toast.textContent = text;
+            toast.style.display = "block";
+            setTimeout(() => toast.style.display = "none", 3000);
+        }
+
+        document.getElementById("messageForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const input = this.new_message;
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            fetch("/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `new_message=${encodeURIComponent(message)}`
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.message) {
+                    const box = document.getElementById("messagesBox");
+                    const div = document.createElement("div");
+                    div.className = "message";
+                    div.innerHTML = `
+                        <p>${data.message}</p>
+                        <div class="message-actions">
+                            <button onclick="editMessage(${data.id}, this)">✏️</button>
+                            <button onclick="deleteMessage(${data.id})">🗑️</button>
+                        </div>`;
+                    box.appendChild(div);
+                    input.value = "";
+                    showToast("Message sent ✅");
+                }
+            })
+            .catch(() => showToast("Error sending message ❌"));
+        });
+
+        function deleteMessage(id) {
+            if (!confirm("Delete this message?")) return;
+
+            fetch(`/delete/${id}`, { method: "POST" })
+                .then(res => {
+                    if (res.ok) {
+                        document.querySelector(`.message[data-id="${id}"]`).remove();
+                        showToast("Message deleted 🗑️");
+                    }
+                });
+        }
+
+        function editMessage(id, btn) {
+            const messageDiv = btn.closest(".message");
+            const p = messageDiv.querySelector("p");
+            const oldText = p.textContent;
+            const newText = prompt("Edit message:", oldText);
+            if (newText === null || newText === oldText) return;
+
+            fetch(`/edit/${id}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `updated_message=${encodeURIComponent(newText)}`
+            })
+            .then(res => {
+                if (res.ok) {
+                    p.textContent = newText;
+                    showToast("Message updated ✏️");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
