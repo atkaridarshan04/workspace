@@ -1,0 +1,65 @@
+name: CI/CD Docker Dev Env Workflow
+
+on:
+  # Automatic triggers for push and pull requests
+  # push:
+  #   branches: [main]
+  # pull_request:
+  #   branches: [ "main" ]
+  workflow_dispatch: # manual trigger
+
+jobs:
+  deploy:
+    name: Build, Scan, Push, Deploy
+    runs-on: self-hosted
+
+    env:
+      IMAGE_NAME: flask-app
+      SERVICE_URL: http://localhost:80/
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tag from commit SHA
+        id: vars
+        run: echo "IMAGE_TAG=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_ENV
+
+      - name: Log in to Docker Hub
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          cd flask-mysql-app
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:$IMAGE_TAG .
+
+      - name: Tag image as latest
+        run: |
+          docker tag ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:$IMAGE_TAG \
+          ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:latest
+
+      - name: Trivy Image Scan
+        run: trivy image --format table -o trivy-image-report.html ${{secrets.DOCKERHUB_USERNAME}}/$IMAGE_NAME:$IMAGE_TAG
+
+      - name: Push Docker image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/$IMAGE_NAME:$IMAGE_TAG
+
+      - name: Deploy using docker-compose
+        run: |
+          cd flask-mysql-app
+          docker-compose down
+          docker-compose up -d --build
+
+      - name: Wait for service to start
+        run: sleep 10
+
+      - name: Health Check
+        run: |
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" $SERVICE_URL)
+          if [ "$STATUS_CODE" -ne 200 ]; then
+            echo "Health check failed with status code $STATUS_CODE"
+            exit 1
+          else
+            echo "Health check passed with status $STATUS_CODE"
+          fi
